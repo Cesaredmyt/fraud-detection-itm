@@ -4,7 +4,7 @@
 | ---------------------- | ------------------------------------------------------ | -------------- |
 | Business Understanding | `docs/architecture.md`, protocolo                      | ✅             |
 | Data Understanding     | `notebooks/01_eda_creditcard.ipynb`                    | ✅ Credit Card |
-| Data Understanding     | `notebooks/02_eda_paysim.ipynb`                        | Pendiente      |
+| Data Understanding     | `notebooks/02_eda_paysim.ipynb`                        | ✅ PaySim      |
 | Data Preparation       | `src/fraud_detection/data/loaders.py`, `validators.py` | ✅ Loaders     |
 | Data Preparation       | `src/fraud_detection/data/cleaners.py`                 | Pendiente      |
 | Data Preparation       | `src/fraud_detection/features/*`                       | Pendiente      |

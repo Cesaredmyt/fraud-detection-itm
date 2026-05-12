@@ -19,7 +19,7 @@ Análisis exploratorio y narrativo. Cada notebook responde preguntas concretas y
 | #   | Notebook                                   | Fase CRISP-DM      | Estado    |
 | --- | ------------------------------------------ | ------------------ | --------- |
 | 01  | `01_eda_creditcard.ipynb`                  | Data Understanding | ✅        |
-| 02  | `02_eda_paysim.ipynb`                      | Data Understanding | Pendiente |
+| 02  | `02_eda_paysim.ipynb`                      | Data Understanding | ✅        |
 | 03  | `03_feature_engineering_exploration.ipynb` | Data Preparation   | Pendiente |
 | 04  | `04_baseline_rules_analysis.ipynb`         | Modeling           | Pendiente |
 | 05  | `05_supervised_models_comparison.ipynb`    | Modeling           | Pendiente |
