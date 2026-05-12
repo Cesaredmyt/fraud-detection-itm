@@ -4,7 +4,6 @@ Detección de fraude y phishing en transacciones financieras digitales mediante 
 
 **Proyecto de Investigación Tecnológica**
 Instituto Tecnológico de Morelia — Departamento de Sistemas y Computación
-Jornadas de Investigación de Pregrado 2025.3
 
 ---
 
@@ -50,40 +49,47 @@ El desarrollo sigue **CRISP-DM** (Cross-Industry Standard Process for Data Minin
 
 \`\`\`
 fraud-detection-itm/
-├── config/          Configuración YAML (modelos, paths, hiperparámetros)
-├── data/            Datasets (gitignored)
-├── db/migrations/   Migraciones SQL
-├── docs/            Documentación técnica
-├── models/          Modelos serializados (gitignored)
-├── notebooks/       Notebooks de EDA y análisis
-├── pipelines/       Scripts de orquestación end-to-end
-├── reports/         Métricas, figuras y logs de experimentos
-├── scripts/         Scripts utilitarios
-├── src/             Código fuente (paquete instalable)
-├── tests/           Tests unitarios y de integración
-├── pyproject.toml   Configuración del paquete
-├── Makefile         Comandos comunes (Linux/macOS)
-└── make.ps1         Comandos comunes (Windows)
+├── config/ Configuración YAML (modelos, paths, hiperparámetros)
+├── data/ Datasets (gitignored)
+├── db/migrations/ Migraciones SQL
+├── docs/ Documentación técnica
+├── models/ Modelos serializados (gitignored)
+├── notebooks/ Notebooks de EDA y análisis
+├── pipelines/ Scripts de orquestación end-to-end
+├── reports/ Métricas, figuras y logs de experimentos
+├── scripts/ Scripts utilitarios
+├── src/ Código fuente (paquete instalable)
+├── tests/ Tests unitarios y de integración
+├── pyproject.toml Configuración del paquete
+├── Makefile Comandos comunes (Linux/macOS)
+└── make.ps1 Comandos comunes (Windows)
 \`\`\`
 
 ## Setup rápido
 
 \`\`\`powershell
+
 # 1. Clonar el repositorio
+
 git clone https://github.com/TU_USUARIO/fraud-detection-itm.git
 cd fraud-detection-itm
 
 # 2. Crear entorno virtual e instalar
+
 .\make.ps1 setup
 
 # 3. Configurar variables de entorno
+
 copy .env.example .env
+
 # Editar .env con tus credenciales de PostgreSQL
 
 # 4. Crear base de datos y aplicar migraciones
+
 .\make.ps1 db-migrate
 
 # 5. Ejecutar tests
+
 .\make.ps1 test
 \`\`\`
 
