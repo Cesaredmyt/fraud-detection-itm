@@ -115,6 +115,8 @@ ignore = [
 "__init__.py" = ["F401"]
 "tests/**/*.py" = ["S101"]
 "notebooks/**/*.py" = ["E402"]
+"src/fraud_detection/data/splitter.py" = ["N806"]
+
 
 [tool.ruff.format]
 quote-style = "double"
