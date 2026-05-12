@@ -62,7 +62,7 @@ def test_load_creditcard_nrows_limits_rows(fake_creditcard_csv: Path) -> None:
 @pytest.mark.unit
 def test_load_creditcard_missing_file_raises(tmp_path: Path) -> None:
     """Si el CSV no existe, debe lanzar FileNotFoundError."""
-    with pytest.raises(FileNotFoundError, match="creditcard.csv"):
+    with pytest.raises(FileNotFoundError, match=r"creditcard\.csv"):
         load_creditcard(data_dir=tmp_path)
 
 
@@ -78,5 +78,5 @@ def test_load_paysim_reads_all_columns(fake_paysim_csv: Path) -> None:
 @pytest.mark.unit
 def test_load_paysim_missing_file_raises(tmp_path: Path) -> None:
     """Si el CSV no existe, debe lanzar FileNotFoundError."""
-    with pytest.raises(FileNotFoundError, match="paysim.csv"):
+    with pytest.raises(FileNotFoundError, match=r"paysim\.csv"):
         load_paysim(data_dir=tmp_path)
