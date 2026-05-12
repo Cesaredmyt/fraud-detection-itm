@@ -24,5 +24,8 @@ repos:
       - id: mypy
         additional_dependencies:
           - "types-PyYAML"
+          - "python-dotenv>=1.0.0"
+          - "sqlalchemy[mypy]>=2.0.0"
+          - "pandas-stubs"
         args: ["--config-file=pyproject.toml"]
         files: ^src/
