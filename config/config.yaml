@@ -1,0 +1,61 @@
+# =============================================================
+# Configuración global del proyecto
+# fraud-detection-itm
+# =============================================================
+
+project:
+  name: "fraud-detection-itm"
+  version: "0.1.0"
+  random_seed: 42
+
+paths:
+  data_raw: "data/raw"
+  data_interim: "data/interim"
+  data_processed: "data/processed"
+  data_external: "data/external"
+  models: "models"
+  reports: "reports"
+  figures: "reports/figures"
+  metrics: "reports/metrics"
+  experiment_logs: "reports/experiment_logs"
+
+datasets:
+  creditcard:
+    filename: "creditcard.csv"
+    target_column: "Class"
+    source: "kaggle"
+    description: "Credit Card Fraud Detection - Dal Pozzolo et al. (2015)"
+  paysim:
+    filename: "paysim.csv"
+    target_column: "isFraud"
+    source: "kaggle"
+    description: "PaySim - Lopez-Rojas & Axelsson (2016)"
+
+split:
+  train_size: 0.70
+  validation_size: 0.15
+  test_size: 0.15
+  stratify: true
+  cross_validation:
+    enabled: true
+    n_folds: 5
+
+resampling:
+  method: "smote"
+  sampling_strategy: "auto"
+  apply_only_to: "train"
+
+logging:
+  level: "INFO"
+  format: "%(asctime)s | %(name)s | %(levelname)s | %(message)s"
+  datefmt: "%Y-%m-%d %H:%M:%S"
+
+evaluation:
+  metrics:
+    - "precision"
+    - "recall"
+    - "f1"
+    - "roc_auc"
+    - "confusion_matrix"
+  primary_metric: "f1"
+  secondary_metric: "roc_auc"
