@@ -104,6 +104,11 @@ def _build_model(model_config: dict[str, Any], dataset: str) -> BaseModel:
     if name == "random_forest":
         return RandomForestModel(hyperparameters=hyperparameters)
 
+    if name == "xgboost":
+        from fraud_detection.models.xgboost_model import XGBoostModel
+
+        return XGBoostModel(hyperparameters=hyperparameters)
+
     raise ValueError(f"Modelo desconocido: {name}")
 
 

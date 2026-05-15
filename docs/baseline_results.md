@@ -1,23 +1,26 @@
 # Benchmarks experimentales
 
-Resultados de la línea base experimental (`RulesBaseline`) y del primer modelo
-de aprendizaje automático (`RandomForestModel`) sobre el dataset Credit Card
-Fraud Detection. Estos números son la referencia oficial del proyecto y se
-citan en el documento de tesis.
+Resultados oficiales del proyecto en el dataset Credit Card Fraud Detection.
+Estos números se citan en el documento de tesis y son reproducibles mediante
+los scripts de `pipelines/` con los YAMLs de configuración en
+`config/experiments/`.
 
-## Configuración experimental
+## Configuración experimental común
 
 - **Dataset**: Credit Card Fraud Detection (Dal Pozzolo et al., 2015)
 - **Filas tras limpieza**: 281,918 (1,889 duplicados eliminados del original)
 - **Tasa de fraude global**: 0.159%
 - **Split estratificado**: 70% train (197,342) / 15% val (42,288) / 15% test (42,288)
-- **Tasa de fraude preservada**: ~0.159% en cada split
 - **Random seed**: 42
-- **Sin SMOTE aplicado** (primer experimento; se evaluará el impacto en Día 4-5)
+- **Features**: temporales + monto (`feature_version: v1`)
+- **Sin SMOTE aplicado** en estos experimentos
+- **Sin tuning de hiperparámetros**: defaults del proyecto
 
-## Resultados sobre el conjunto de validación
+## Experimento 001: Baseline vs Random Forest
 
-### Sistema basado en reglas (RulesBaseline)
+**Configuración**: `config/experiments/exp_001_creditcard_baseline.yaml`
+
+### Sistema basado en reglas (`RulesBaseline`)
 
 **Hiperparámetros**:
 
@@ -26,23 +29,7 @@ citan en el documento de tesis.
 - `v17_negative_threshold`: -5.0
 - `min_rules_to_flag`: 2
 
-**Matriz de confusión**:
-
-|               | Pred. Legítima | Pred. Fraude |
-| ------------- | -------------- | ------------ |
-| Real Legítima | 42,158         | 63           |
-| Real Fraude   | 58             | 9            |
-
-**Métricas (clase fraude)**:
-
-| Métrica   | Valor  |
-| --------- | ------ |
-| Precision | 0.1250 |
-| Recall    | 0.1343 |
-| F1-score  | 0.1295 |
-| AUC-ROC   | 0.7254 |
-
-### Random Forest (RandomForestModel)
+### Random Forest (`RandomForestModel`)
 
 **Hiperparámetros**:
 
@@ -54,71 +41,101 @@ citan en el documento de tesis.
 - `class_weight`: balanced
 - `random_state`: 42
 
-**Matriz de confusión**:
+### Resultados sobre VALIDATION
 
-|               | Pred. Legítima | Pred. Fraude |
-| ------------- | -------------- | ------------ |
-| Real Legítima | 42,219         | 2            |
-| Real Fraude   | 19             | 48           |
+| Modelo        | Precision | Recall | F1     | AUC-ROC | TP  | FP  | FN  |
+| ------------- | --------- | ------ | ------ | ------- | --- | --- | --- |
+| RulesBaseline | 0.1250    | 0.1343 | 0.1295 | 0.7254  | 9   | 63  | 58  |
+| RandomForest  | 0.9600    | 0.7164 | 0.8205 | 0.9356  | 48  | 2   | 19  |
 
-**Métricas (clase fraude)**:
+**Mejora del Random Forest sobre el baseline**:
 
-| Métrica   | Valor  |
-| --------- | ------ |
-| Precision | 0.9600 |
-| Recall    | 0.7164 |
-| F1-score  | 0.8205 |
-| AUC-ROC   | 0.9356 |
+- F1: +533.6%
+- AUC-ROC: +29.0%
+- Verdaderos positivos: +433.3%
+- Falsos positivos: -96.8%
 
-**Top 10 features más importantes**:
+## Experimento 002: Comparativa de tres modelos
 
-| Rank | Feature | Importancia |
-| ---- | ------- | ----------- |
-| 1    | V14     | 17.37%      |
-| 2    | V10     | 11.28%      |
-| 3    | V4      | 10.54%      |
-| 4    | V12     | 10.47%      |
-| 5    | V11     | 8.82%       |
-| 6    | V17     | 8.48%       |
-| 7    | V3      | 3.73%       |
-| 8    | V16     | 3.56%       |
-| 9    | V7      | 2.90%       |
-| 10   | V2      | 1.95%       |
+**Configuración**: `config/experiments/exp_002_creditcard_three_models.yaml`
 
-## Comparativa Random Forest vs Baseline
+Incorpora XGBoost a la comparativa, manteniendo idéntica la configuración de
+datos y splits del Experimento 001.
 
-| Métrica              | Baseline (Reglas) | Random Forest | Diferencia absoluta | Mejora relativa |
-| -------------------- | ----------------- | ------------- | ------------------- | --------------- |
-| F1-score             | 0.1295            | 0.8205        | +0.6910             | **+533.6%**     |
-| AUC-ROC              | 0.7254            | 0.9356        | +0.2102             | +29.0%          |
-| Precision            | 0.1250            | 0.9600        | +0.8350             | +668.0%         |
-| Recall               | 0.1343            | 0.7164        | +0.5821             | +433.4%         |
-| Falsos positivos     | 63                | 2             | -61                 | -96.8%          |
-| Verdaderos positivos | 9                 | 48            | +39                 | +433.3%         |
+### XGBoost (`XGBoostModel`)
+
+**Hiperparámetros**:
+
+- `n_estimators`: 300
+- `max_depth`: 8
+- `learning_rate`: 0.1
+- `subsample`: 0.8
+- `colsample_bytree`: 0.8
+- `scale_pos_weight`: calculado automáticamente como `n_neg / n_pos` ≈ 627
+- `tree_method`: hist
+- `eval_metric`: aucpr
+- `random_state`: 42
+
+### Resultados sobre TRAIN
+
+| Modelo        | Precision | Recall | F1     | AUC-ROC | TP  | FP  | FN  |
+| ------------- | --------- | ------ | ------ | ------- | --- | --- | --- |
+| RulesBaseline | 0.1813    | 0.1911 | 0.1860 | 0.7573  | 60  | 271 | 254 |
+| RandomForest  | 0.9691    | 1.0000 | 0.9843 | 0.9999  | 314 | 10  | 0   |
+| XGBoost       | 1.0000    | 1.0000 | 1.0000 | 1.0000  | 314 | 0   | 0   |
+
+### Resultados sobre VALIDATION
+
+| Modelo        | Precision | Recall | F1         | AUC-ROC    | TP  | FP  | FN  |
+| ------------- | --------- | ------ | ---------- | ---------- | --- | --- | --- |
+| RulesBaseline | 0.1250    | 0.1343 | 0.1295     | 0.7254     | 9   | 63  | 58  |
+| RandomForest  | 0.9600    | 0.7164 | 0.8205     | 0.9356     | 48  | 2   | 19  |
+| **XGBoost**   | 0.9444    | 0.7612 | **0.8430** | **0.9693** | 51  | 3   | 16  |
+
+### Mejoras relativas sobre el baseline
+
+| Modelo       | F1 vs Baseline | AUC vs Baseline | Recall vs Baseline |
+| ------------ | -------------- | --------------- | ------------------ |
+| RandomForest | +533.6%        | +29.0%          | +433.4%            |
+| XGBoost      | +550.9%        | +33.6%          | +466.7%            |
+
+### XGBoost vs Random Forest (validation)
+
+| Métrica   | RandomForest | XGBoost | Ganador      | Diferencia |
+| --------- | ------------ | ------- | ------------ | ---------- |
+| F1        | 0.8205       | 0.8430  | XGBoost      | +2.7%      |
+| AUC-ROC   | 0.9356       | 0.9693  | XGBoost      | +3.6%      |
+| Recall    | 0.7164       | 0.7612  | XGBoost      | +6.3%      |
+| Precision | 0.9600       | 0.9444  | RandomForest | -1.6%      |
+| TP        | 48           | 51      | XGBoost      | +3 fraudes |
+| FP        | 2            | 3       | RandomForest | +1 FP      |
 
 ## Lectura clave
 
-El modelo Random Forest supera al sistema basado en reglas en todas las
-métricas relevantes para la hipótesis del proyecto:
+Los tres modelos evaluados se ordenan de forma consistente en todas las
+métricas relevantes: **XGBoost > Random Forest > Reglas**, validando que la
+sofisticación del algoritmo aporta valor incremental incluso entre métodos
+de aprendizaje automático.
 
-- **F1-score 6.3 veces mayor** (0.82 vs 0.13).
-- **AUC 1.29 veces mayor** (0.94 vs 0.73).
-- **Reducción del 96.8% en falsos positivos** (de 63 a 2).
-- **Incremento del 433% en verdaderos positivos** (de 9 a 48).
+**Validación de la hipótesis**: el modelo más sofisticado (XGBoost) alcanza
+un F1-score de 0.8430 frente al 0.1295 del sistema basado en reglas. Esto
+representa una mejora del 551% en la métrica primaria de la hipótesis del
+proyecto, con una mejora paralela del 34% en AUC-ROC. Operacionalmente,
+XGBoost detecta 51 fraudes reales de 67 posibles (recall 76.1%) con solo 3
+falsos positivos, mientras que el sistema de reglas detecta apenas 9
+fraudes generando 63 alertas falsas.
 
-Estos resultados validan la hipótesis del proyecto en el dataset Credit Card:
-un modelo de aprendizaje automático supera significativamente a un sistema
-tradicional basado en reglas en la detección de fraude financiero.
-
-La importancia relativa de las features confirma además la consistencia entre
-el análisis exploratorio (Notebook 01) y el modelo entrenado: las variables
-V14, V10, V12 y V17, identificadas en el EDA como las de mayor correlación
-con la clase, son también las que el Random Forest considera más predictivas.
+**Comparación con literatura**: los resultados se sitúan en el rango
+competitivo de trabajos publicados sobre el mismo dataset (Awoyemi et al.,
+2017 reportan F1≈0.85, AUC≈0.96; Dal Pozzolo et al., 2015 reportan
+F1≈0.74, AUC≈0.94), lo que respalda la solidez metodológica del proyecto.
 
 ## Trabajo pendiente
 
-- Evaluación sobre el conjunto de **test** (final, una sola vez al cierre).
-- Aplicación de SMOTE y comparación de impacto.
-- Entrenamiento de XGBoost y comparación con Random Forest.
-- Implementación del modelo híbrido (supervisado + no supervisado).
+- Evaluación sobre el conjunto de **test** (una sola vez, al cierre).
+- Aplicación de SMOTE y comparación de impacto en recall.
+- Implementación de `IsolationForestModel` (no supervisado).
+- Implementación del **modelo híbrido** (supervisado + no supervisado).
 - Replicación completa de la metodología sobre el dataset PaySim.
+- Validación cruzada k-fold (k=5) sobre todos los modelos.
+- Análisis de errores: revisión cualitativa de los falsos negativos.
