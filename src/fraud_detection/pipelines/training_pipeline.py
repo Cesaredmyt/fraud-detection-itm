@@ -305,24 +305,11 @@ def run_experiment(config: ExperimentConfig) -> dict[str, dict[str, EvaluationRe
     )
     print(f"      {split.summary()}")
 
-    # 4. Resampling opcional sobre train
+    # 4. Reportar si hay resampling (la aplicacion real se hace por modelo
+    # en el paso 5 para que ocurra DESPUES del filtrado a columnas
+    # numericas; sklearn/imblearn no acepta strings).
     if config.resampling_method != "none":
-        print(f"\n[4/6] Aplicando resampling: {config.resampling_method}...")
-        X_train_res, y_train_res, resampling_report = resample_training_set(
-            split.X_train,
-            split.y_train,
-            method=config.resampling_method,  # type: ignore[arg-type]
-            random_seed=config.random_seed,
-        )
-        print(f"      {resampling_report.summary()}")
-        split = DataSplit(
-            X_train=X_train_res,
-            y_train=y_train_res,
-            X_val=split.X_val,
-            y_val=split.y_val,
-            X_test=split.X_test,
-            y_test=split.y_test,
-        )
+        print(f"\n[4/6] Resampling configurado: {config.resampling_method} (se aplica por modelo).")
     else:
         print("\n[4/6] Sin resampling.")
 
@@ -334,8 +321,9 @@ def run_experiment(config: ExperimentConfig) -> dict[str, dict[str, EvaluationRe
         print(f"\n  -> {model_name}")
 
         # RulesBaseline puede consumir la columna 'type' (string); el resto
-        # de modelos (RandomForest, XGBoost, IsolationForest) requiere solo
-        # columnas numéricas. XGBoost en particular falla con dtype=str.
+        # de modelos (RandomForest, XGBoost, IsolationForest, Hybrid)
+        # requiere solo columnas numéricas. XGBoost en particular falla
+        # con dtype=str.
         if model_name == "rules_baseline":
             split_for_model = split
         else:
@@ -349,6 +337,27 @@ def run_experiment(config: ExperimentConfig) -> dict[str, dict[str, EvaluationRe
                 y_val=split.y_val,
                 X_test=split.X_test[numeric_cols],
                 y_test=split.y_test,
+            )
+
+        # Resampling sobre TRAIN solamente, una vez filtradas las columnas.
+        # RulesBaseline no se reentrena con SMOTE: las reglas son estaticas
+        # y resamplear el train solo distorsiona los conteos sin cambiar
+        # el comportamiento del modelo.
+        if config.resampling_method != "none" and model_name != "rules_baseline":
+            X_train_res, y_train_res, resampling_report = resample_training_set(
+                split_for_model.X_train,
+                split_for_model.y_train,
+                method=config.resampling_method,  # type: ignore[arg-type]
+                random_seed=config.random_seed,
+            )
+            print(f"     {resampling_report.summary()}")
+            split_for_model = DataSplit(
+                X_train=X_train_res,
+                y_train=y_train_res,
+                X_val=split_for_model.X_val,
+                y_val=split_for_model.y_val,
+                X_test=split_for_model.X_test,
+                y_test=split_for_model.y_test,
             )
 
         model = _build_model(model_cfg, dataset=config.dataset)

@@ -120,6 +120,7 @@ ignore = [
 "src/fraud_detection/models/**/*.py" = ["N803", "N806"]
 "src/fraud_detection/pipelines/**/*.py" = ["N803", "N806"]
 "src/fraud_detection/evaluation/**/*.py" = ["N803", "N806"]
+"scripts/**/*.py" = ["N803", "N806"]
 
 
 

@@ -455,10 +455,117 @@ adicionales) depende fuertemente de que el modelo supervisado deje
 margen de recall por cubrir. En PaySim, donde el supervisado ya satura,
 el híbrido solo agrega ruido.
 
+## Experimento 007: Impacto de SMOTE en Credit Card
+
+**Configuración**: `config/experiments/exp_007_creditcard_with_smote.yaml`
+
+Reusa la configuración de exp_005 cambiando `resampling.method` de `none`
+a `smote`. SMOTE se aplica EXCLUSIVAMENTE al fold de entrenamiento (post
+split y post filtrado a columnas numéricas), nunca a validation o test.
+`RulesBaseline` queda excluido del resampling porque sus reglas son
+estáticas; resamplearlo solo distorsiona los conteos sin cambiar el
+comportamiento del modelo.
+
+### Resultados sobre VALIDATION (Credit Card, sin vs con SMOTE)
+
+| Modelo                            | P sin → con   | R sin → con   | F1 sin → con  | AUC sin → con |
+| --------------------------------- | ------------- | ------------- | ------------- | ------------- |
+| RulesBaseline                     | 0.1250 = 0.1250 | 0.1343 = 0.1343 | 0.1295 = 0.1295 | 0.7254 = 0.7254 |
+| RandomForest                      | 0.9600 → 0.9153 | 0.7164 → 0.8060 | **0.8205 → 0.8571** | 0.9356 → 0.9468 |
+| XGBoost                           | 0.9444 → 0.9000 | 0.7612 → 0.8060 | 0.8430 → 0.8504 | 0.9693 → 0.9739 |
+| IsolationForest                   | 0.0222 → 0.0280 | 0.7463 → 0.3134 | 0.0431 → 0.0514 | 0.9259 → 0.8214 |
+| Hybrid OR                         | 0.0244 → 0.0696 | 0.8209 = 0.8209 | 0.0473 → 0.1284 | 0.9406 → 0.9321 |
+
+Lectura:
+
+- **RandomForest** es el principal beneficiado por SMOTE: F1 sube 4.5%
+  (de 0.8205 a 0.8571) y recall sube de 0.72 a 0.81 a costa de 5%
+  menos precision. Es el cambio cualitativo más relevante del experimento.
+- **XGBoost** sube F1 marginalmente (+0.9%). Su `scale_pos_weight`
+  automático ya compensaba el desbalance internamente.
+- **IsolationForest** se ve degradado: el oversampling sintético rompe
+  la noción de "anomalía" del modelo, que aprende sobre un mundo donde
+  el 50% es fraude. AUC cae de 0.93 a 0.82, recall de 0.75 a 0.31.
+- **Hybrid OR** mejora aparentemente (F1 0.05 → 0.13) porque IF ahora
+  marca menos transacciones (729 FP vs 2,203), pero sigue muy por debajo
+  de XGBoost solo.
+
+## Experimento 008: Impacto de SMOTE en PaySim
+
+**Configuración**: `config/experiments/exp_008_paysim_with_smote.yaml`
+
+### Resultados sobre VALIDATION (PaySim, sin vs con SMOTE)
+
+| Modelo                            | P sin → con   | R sin → con   | F1 sin → con  | AUC sin → con |
+| --------------------------------- | ------------- | ------------- | ------------- | ------------- |
+| RulesBaseline                     | 0.0030 = 0.0030 | 1.0000 = 1.0000 | 0.0059 = 0.0059 | 0.9625 = 0.9625 |
+| RandomForest                      | 0.9960 = 0.9960 | 1.0000 = 1.0000 | **0.9980 = 0.9980** | 1.0000 = 1.0000 |
+| XGBoost                           | 0.9960 = 0.9960 | 1.0000 = 1.0000 | **0.9980 = 0.9980** | 1.0000 = 1.0000 |
+| IsolationForest                   | 0.0113 → 0.0026 | 0.6883 → 0.1781 | 0.0223 → 0.0050 | 0.9146 → 0.5562 |
+| Hybrid OR                         | 0.0164 → 0.0142 | 1.0000 = 1.0000 | 0.0322 → 0.0279 | 0.999995 = 0.999995 |
+
+En PaySim los modelos supervisados ya saturan en val sin SMOTE, por lo
+que el oversampling no aporta nada en F1, precision, recall o AUC.
+IsolationForest se ve **catastróficamente degradado**: el AUC cae de
+0.91 a 0.56 (apenas mejor que azar). Confirma que SMOTE no debe usarse
+con detectores no supervisados.
+
+### Recomendación final sobre SMOTE
+
+- **Para producción con `RandomForest` en datos similares a Credit Card
+  (desbalance ~0.2%, sin saturación)**: SMOTE aporta valor (+4.5% F1)
+  y se recomienda activar.
+- **Para `XGBoost` con `scale_pos_weight` automático**: SMOTE es
+  redundante; el ajuste de pesos internos ya cubre el desbalance.
+- **Para detectores no supervisados (`IsolationForest`)**: SMOTE
+  contraindicado, distorsiona la noción de anomalía.
+- **Para datasets donde el supervisado ya satura (PaySim con features
+  behavioral)**: SMOTE no aporta y duplica el tiempo de entrenamiento.
+
+## Validación cruzada k-fold (k=5)
+
+**Script**: `scripts/run_cross_validation.py`
+**Módulo**: `src/fraud_detection/evaluation/cross_validation.py`
+
+Aplica `StratifiedKFold(k=5, shuffle=True, random_state=42)` sobre el
+dataset completo (sin split previo en train/val/test), entrenando un
+modelo fresco por fold. Los reportes se persisten en
+`reports/metrics/cv__<dataset>__<model>.json`.
+
+### Resultados (mean ± std sobre 5 folds)
+
+#### Credit Card (n=281,918, fraude=0.16%)
+
+| Modelo       | Precision        | Recall           | F1               | AUC-ROC          |
+| ------------ | ---------------- | ---------------- | ---------------- | ---------------- |
+| XGBoost      | 0.9122 ± 0.0299  | 0.8103 ± 0.0525  | **0.8576 ± 0.0370** | **0.9798 ± 0.0089** |
+| RandomForest | 0.9337 ± 0.0203  | 0.7634 ± 0.0517  | 0.8396 ± 0.0390  | 0.9600 ± 0.0098  |
+
+#### PaySim (n=1,272,524 al 20%, fraude=0.13%)
+
+| Modelo       | Precision        | Recall           | F1               | AUC-ROC          |
+| ------------ | ---------------- | ---------------- | ---------------- | ---------------- |
+| XGBoost      | 0.9958 ± 0.0059  | 0.9957 ± 0.0027  | 0.9957 ± 0.0039  | **0.9990 ± 0.0014** |
+| RandomForest | 0.9988 ± 0.0017  | 0.9945 ± 0.0025  | **0.9966 ± 0.0020** | 0.9979 ± 0.0014  |
+
+### Lectura
+
+- **Estabilidad alta en ambos datasets**: las desviaciones estándar
+  son pequeñas (Credit Card: σF1 ≈ 0.04, PaySim: σF1 ≈ 0.003), lo que
+  confirma que los resultados del split único 70/15/15 no son producto
+  del azar.
+- **XGBoost vs RandomForest en CC**: XGBoost gana en F1, AUC y recall
+  (todas las diferencias dentro de 1σ). RF gana en precision. La
+  diferencia es estadísticamente modesta pero consistente.
+- **XGBoost vs RandomForest en PaySim**: empate técnico (RF marginal en
+  F1, XGBoost marginal en AUC). En la práctica, cualquiera de los dos
+  es válido.
+- **CV vs single split** (XGBoost CC): el F1 del CV (0.8576 ± 0.0370)
+  es ligeramente mejor que el del split único (0.8430), pero el segundo
+  cae dentro del intervalo del primero, confirmando reproducibilidad.
+
 ## Trabajo pendiente
 
-- Aplicación de SMOTE en train y comparación de impacto en recall.
-- Validación cruzada k-fold (k=5) para robustez estadística.
 - Evaluación final sobre el conjunto de **test** (una sola vez, al cierre).
 - Re-tuning del baseline de PaySim: `min_rules_to_flag=3` o `=4` para
   obtener una comparación más equilibrada en precision.
@@ -466,3 +573,4 @@ el híbrido solo agrega ruido.
   (≈0.16% en CC, ≈0.13% en PaySim) y reevaluar el híbrido: la calidad
   del componente no supervisado actual ahoga cualquier estrategia de
   combinación.
+- Notebook narrativo para la tesis con figuras consolidadas.
