@@ -198,11 +198,163 @@ debido al umbral, aporta diversidad metodológica (no supervisado) y
 detecta 50 de 67 fraudes con un AUC competitivo, posicionándose como
 componente complementario natural para el modelo híbrido.
 
+## Experimento 004: Replicación de los 4 modelos sobre PaySim
+
+**Configuración**: `config/experiments/exp_004_paysim_four_models.yaml`
+
+Replica la comparativa de 4 modelos sobre PaySim, usando un subset estratificado
+del 20% (1,272,524 filas, 1,643 fraudes) para iterar rápido durante el desarrollo.
+Las features behavioral (`balance_mismatch`, `is_zero_origin_after`,
+`amount_to_balance_ratio`, etc.) se aplican antes del split.
+
+### Configuración específica de PaySim
+
+- **Dataset**: PaySim (Lopez-Rojas et al., 2016)
+- **Filas tras limpieza**: 6,362,620 (sin duplicados ni nulos)
+- **Subset estratificado (sample_fraction=0.20)**: 1,272,524 filas
+- **Tasa de fraude global**: 0.129%
+- **Split estratificado**: 70% train (890,766) / 15% val (190,879) / 15% test (190,879)
+- **Random seed**: 42
+- **Features**: temporales + monto + **behavioral** (`feature_version: v1`)
+- **Sin SMOTE aplicado**
+- **Sin tuning de hiperparámetros**: mismos defaults que en Credit Card
+
+### Resultados sobre VALIDATION
+
+| Modelo               | Precision | Recall | F1         | AUC-ROC    | TP  | FP     | FN |
+| -------------------- | --------- | ------ | ---------- | ---------- | --- | ------ | -- |
+| RulesBaseline        | 0.0030    | 1.0000 | 0.0059     | 0.9625     | 247 | 82,649 | 0  |
+| **RandomForest**     | 0.9960    | 1.0000 | **0.9980** | **1.0000** | 247 | 1      | 0  |
+| **XGBoost**          | 0.9960    | 1.0000 | **0.9980** | **1.0000** | 247 | 1      | 0  |
+| IsolationForest      | 0.0108    | 0.7126 | 0.0213     | 0.9163     | 176 | 16,110 | 71 |
+
+### Lectura por modelo en PaySim
+
+**RulesBaseline** alcanza `recall=1.000` pero `precision=0.003`. Con
+`min_rules_to_flag=2` sobre las 4 reglas definidas para PaySim, el detector
+marca el 43% de todas las transacciones como sospechosas porque la regla
+`R1_risky_type` (tipo CASH_OUT o TRANSFER) por sí sola activa en una
+proporción muy alta del volumen. AUC alto (0.9625) confirma que el ranking
+interno separa bien fraude de legítimo, pero el umbral del baseline no es
+operacionalmente útil.
+
+**RandomForest y XGBoost** empatan en métricas (F1=0.9980, AUC=1.0000),
+distinto de Credit Card donde XGBoost dominaba. Ambos detectan los 247
+fraudes del set de validación con un único falso positivo. La saturación
+en métricas refleja que el problema en PaySim es estructuralmente más
+fácil que en Credit Card: el fraude tiene una huella casi determinista
+(vaciado de cuenta + mismatch contable) capturada por las features
+behavioral.
+
+**IsolationForest** mantiene su patrón característico: recall razonable
+(0.7126) pero precision pésima (0.0108) por la calibración del
+`contamination='auto'`, generando 16,110 falsos positivos. AUC=0.9163
+indica que el ranking interno sigue siendo competitivo.
+
+### Feature importances dominantes (validación de hipótesis)
+
+Top 5 features por importancia, en ambos modelos supervisados (variante
+con `isFlaggedFraud`):
+
+| Random Forest               | Importancia | XGBoost                     | Importancia |
+| --------------------------- | ----------- | --------------------------- | ----------- |
+| `balance_mismatch`          | 0.227       | `balance_change`            | 0.580       |
+| `balance_change`            | 0.182       | `balance_mismatch`          | 0.138       |
+| `amount_to_balance_ratio`   | 0.180       | `is_zero_origin_after`      | 0.101       |
+| `balance_ratio`             | 0.076       | `balance_ratio`             | 0.069       |
+| `newbalanceOrig`            | 0.075       | `amount_is_round`           | 0.030       |
+
+Los 4 features del bloque behavioral construido en `src/fraud_detection/features/behavioral.py`
+dominan la decisión de ambos modelos. **`is_zero_origin_after` y `balance_mismatch`
+aparecen en el top 10 de RF y XGBoost**, confirmando empíricamente la
+hipótesis del EDA: el fraude en PaySim tiene una firma estructural
+detectable a partir de la matemática de balances.
+
+### Mejoras relativas sobre el baseline (validation, PaySim)
+
+| Modelo          | F1 vs Baseline   | AUC vs Baseline | Recall vs Baseline |
+| --------------- | ---------------- | --------------- | ------------------ |
+| RandomForest    | +16,696.7%       | +3.9%           | igual (ambos 1.00) |
+| XGBoost         | +16,696.7%       | +3.9%           | igual (ambos 1.00) |
+| IsolationForest | +258.6%          | -4.9%           | -28.7%             |
+
+La magnitud del salto en F1 (+16,000%) refleja que el baseline en PaySim
+tiene `precision` extremadamente baja por diseño (umbral de 2 reglas);
+la métrica útil para comparar contra Credit Card es **AUC-ROC**, donde
+los ML supervisados aportan solo +4% incremental sobre las reglas porque
+estas ya rankean bien.
+
+## Experimento 004b: Variante sin `isFlaggedFraud`
+
+**Configuración**: `config/experiments/exp_004b_paysim_four_models_no_flagged.yaml`
+
+`isFlaggedFraud` es la bandera nativa del simulador, derivable de
+`amount > 200,000` y `type == 'TRANSFER'`. Aunque no es ground truth
+estricto, podría introducir información trivial. Esta variante mide el
+rendimiento puro al excluirla de la matriz X.
+
+### Resultados sobre VALIDATION
+
+| Modelo               | Precision | Recall | F1         | AUC-ROC    | TP  | FP     | FN |
+| -------------------- | --------- | ------ | ---------- | ---------- | --- | ------ | -- |
+| RulesBaseline        | 0.0030    | 1.0000 | 0.0059     | 0.9625     | 247 | 82,649 | 0  |
+| **RandomForest**     | 0.9960    | 1.0000 | **0.9980** | **1.0000** | 247 | 1      | 0  |
+| **XGBoost**          | 0.9960    | 1.0000 | **0.9980** | **1.0000** | 247 | 1      | 0  |
+| IsolationForest      | 0.0113    | 0.6883 | 0.0223     | 0.9146     | 170 | 14,848 | 77 |
+
+### Diferencias entre exp_004 (con) y exp_004b (sin `isFlaggedFraud`)
+
+| Modelo          | ΔF1     | ΔAUC    | ΔTP | ΔFP    |
+| --------------- | ------- | ------- | --- | ------ |
+| RulesBaseline   | 0       | 0       | 0   | 0      |
+| RandomForest    | 0       | 0       | 0   | 0      |
+| XGBoost         | 0       | 0       | 0   | 0      |
+| IsolationForest | +0.0010 | -0.0017 | -6  | -1,262 |
+
+**Hallazgo clave**: los modelos supervisados (RF y XGBoost) producen
+métricas idénticas con o sin `isFlaggedFraud`. En XGBoost, la importancia
+asignada a esta feature es 0.0092 (puesto #8), por debajo de las features
+behavioral. El alto F1 en PaySim **no depende de `isFlaggedFraud`** sino
+del feature engineering deliberado sobre balances. Se valida que el
+rendimiento del modelo es atribuible al pipeline metodológico del proyecto.
+
+IsolationForest cambia marginalmente al perder una feature
+discriminante adicional, pero el patrón general se mantiene.
+
+## Comparativa transversal: Credit Card vs PaySim (validation)
+
+| Modelo          | CC F1   | PaySim F1 | CC AUC  | PaySim AUC |
+| --------------- | ------- | --------- | ------- | ---------- |
+| RulesBaseline   | 0.1295  | 0.0059    | 0.7254  | 0.9625     |
+| RandomForest    | 0.8205  | 0.9980    | 0.9356  | 1.0000     |
+| XGBoost         | 0.8430  | 0.9980    | 0.9693  | 1.0000     |
+| IsolationForest | 0.0431  | 0.0213    | 0.9259  | 0.9163     |
+
+Lectura cruzada:
+- **PaySim es más fácil para ML supervisado** que Credit Card. La huella
+  estructural del fraude (vaciado de cuenta + mismatch contable) se
+  captura con features deterministas, lo que hace converger RF y XGBoost
+  a métricas idénticas.
+- **El baseline funciona muy distinto**: en Credit Card las reglas marcan
+  poco (precision 0.125, recall 0.134), en PaySim marcan todo (precision
+  0.003, recall 1.000). El parámetro `min_rules_to_flag=2` es óptimo
+  para Credit Card pero demasiado permisivo para PaySim.
+- **AUC del baseline en PaySim es muy alto** (0.96), no porque el umbral
+  funcione, sino porque el conteo de reglas activadas correlaciona bien
+  con la probabilidad real de fraude. El upgrade a ML es menor (+4% AUC)
+  porque las reglas ya capturan la señal — el aporte está en la
+  precision, no en el ranking.
+- **IsolationForest se comporta consistentemente** entre datasets:
+  recall ~70%, precision baja, AUC ~0.92. La firma de "anomalía global"
+  es transversal al dominio.
+
 ## Trabajo pendiente
 
 - Implementación del **modelo híbrido** combinando XGBoost + Isolation Forest.
-- Replicación completa de la metodología sobre el dataset **PaySim**.
 - Aplicación de SMOTE en train y comparación de impacto en recall.
 - Validación cruzada k-fold (k=5) para robustez estadística.
 - Evaluación final sobre el conjunto de **test** (una sola vez, al cierre).
-- Análisis cualitativo de errores: revisión de los falsos negativos persistentes.
+- Análisis cualitativo de errores: revisión del único falso positivo
+  persistente en RF/XGBoost de PaySim.
+- Re-tuning del baseline de PaySim: `min_rules_to_flag=3` o `=4` para
+  obtener una comparación más equilibrada en precision.
