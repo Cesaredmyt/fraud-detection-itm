@@ -69,9 +69,9 @@ def main() -> int:
             print(f"  AUC Baseline:    {baseline_val.auc_roc:.4f}")
             print(f"  AUC RandomForest:{rf_val.auc_roc:.4f}  ({auc_improvement_pct:+.1f}%)")
             if rf_val.f1 > baseline_val.f1 and rf_val.auc_roc > baseline_val.auc_roc:
-                print("\n  ✅ Random Forest supera al baseline en F1 y AUC.")
+                print("\n  [OK] Random Forest supera al baseline en F1 y AUC.")
             else:
-                print("\n  ⚠️  Random Forest no supera al baseline. Revisar configuración.")
+                print("\n  [WARN] Random Forest no supera al baseline. Revisar configuracion.")
 
     return 0
 

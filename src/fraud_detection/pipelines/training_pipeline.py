@@ -45,6 +45,7 @@ class ExperimentConfig:
     notes: str
     dataset: Literal["creditcard", "paysim"]
     feature_version: str
+    sample_fraction: float | None
     train_size: float
     val_size: float
     test_size: float
@@ -53,6 +54,7 @@ class ExperimentConfig:
     apply_amount: bool
     apply_behavioral: bool
     resampling_method: str
+    exclude_columns: list[str] = field(default_factory=list)
     models: list[dict[str, Any]] = field(default_factory=list)
     splits_to_evaluate: list[str] = field(default_factory=list)
     save_models: bool = True
@@ -69,6 +71,8 @@ class ExperimentConfig:
             notes=data["experiment"].get("notes", ""),
             dataset=data["dataset"]["name"],
             feature_version=data["dataset"].get("feature_version", "v1"),
+            sample_fraction=data["dataset"].get("sample_fraction"),
+            exclude_columns=list(data["dataset"].get("exclude_columns", []) or []),
             train_size=data["split"]["train_size"],
             val_size=data["split"]["val_size"],
             test_size=data["split"]["test_size"],
@@ -226,8 +230,15 @@ def run_experiment(config: ExperimentConfig) -> dict[str, dict[str, EvaluationRe
 
     # 1. Cargar y limpiar
     print(f"\n[1/6] Cargando y limpiando {config.dataset}...")
-    df_clean, cleaning_report = load_and_clean(config.dataset)
+    df_clean, cleaning_report = load_and_clean(
+        config.dataset,
+        sample_fraction=config.sample_fraction,
+    )
     print(f"      {cleaning_report.summary()}")
+    if config.sample_fraction is not None and config.sample_fraction < 1.0:
+        print(
+            f"      [muestreo estratificado: {config.sample_fraction:.0%} -> {len(df_clean):,} filas]"
+        )
 
     # 2. Features
     print("\n[2/6] Aplicando feature engineering...")
@@ -240,6 +251,11 @@ def run_experiment(config: ExperimentConfig) -> dict[str, dict[str, EvaluationRe
     )
     target_col = "Class" if config.dataset == "creditcard" else "isFraud"
     X, y = prepare_for_modeling(df_feat, dataset=config.dataset, target_col=target_col)
+    if config.exclude_columns:
+        dropped = [c for c in config.exclude_columns if c in X.columns]
+        X = X.drop(columns=dropped, errors="ignore")
+        if dropped:
+            print(f"      [exclude_columns aplicado: {dropped}]")
     print(f"      Shape final: X={X.shape}, y={y.shape}")
 
     # 3. Split estratificado
@@ -284,29 +300,23 @@ def run_experiment(config: ExperimentConfig) -> dict[str, dict[str, EvaluationRe
         model_name = model_cfg["name"]
         print(f"\n  -> {model_name}")
 
-        # Para RulesBaseline necesitamos las features no escaladas;
-        # para Random Forest también funciona sobre features crudas (no necesita scaler).
-        # En PMV mínimo no usamos scaler. Cuando lo necesitemos lo añadimos al pipeline.
-
-        # Filtrar columnas que el modelo SÍ puede consumir:
-        # RandomForest necesita solo numéricas; RulesBaseline puede usar 'type'.
-        if model_name == "random_forest":
+        # RulesBaseline puede consumir la columna 'type' (string); el resto
+        # de modelos (RandomForest, XGBoost, IsolationForest) requiere solo
+        # columnas numéricas. XGBoost en particular falla con dtype=str.
+        if model_name == "rules_baseline":
+            split_for_model = split
+        else:
             numeric_cols = [
                 c for c in split.X_train.columns if split.X_train[c].dtype.kind in "ifb"
             ]
-            X_train_use = split.X_train[numeric_cols]
-            X_val_use = split.X_val[numeric_cols]
-            X_test_use = split.X_test[numeric_cols]
             split_for_model = DataSplit(
-                X_train=X_train_use,
+                X_train=split.X_train[numeric_cols],
                 y_train=split.y_train,
-                X_val=X_val_use,
+                X_val=split.X_val[numeric_cols],
                 y_val=split.y_val,
-                X_test=X_test_use,
+                X_test=split.X_test[numeric_cols],
                 y_test=split.y_test,
             )
-        else:
-            split_for_model = split
 
         model = _build_model(model_cfg, dataset=config.dataset)
         model.fit(split_for_model.X_train, split_for_model.y_train)
