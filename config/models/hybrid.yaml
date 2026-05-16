@@ -1,0 +1,22 @@
+model:
+  name: "hybrid"
+  type: "hybrid"
+  library: "custom"
+  class: "fraud_detection.models.hybrid.HybridModel"
+
+# Componentes del hibrido. Cada uno apunta a su propio YAML para
+# que la configuracion sea modular y reusable.
+components:
+  supervised:
+    name: "xgboost"
+    config_file: "config/models/xgboost.yaml"
+  unsupervised:
+    name: "isolation_forest"
+    config_file: "config/models/isolation_forest.yaml"
+
+hyperparameters:
+  combination_strategy: "or"  # or | and | weighted_voting
+  weights:
+    - 0.5  # peso supervisado
+    - 0.5  # peso no supervisado
+  threshold: 0.5  # solo usado por weighted_voting

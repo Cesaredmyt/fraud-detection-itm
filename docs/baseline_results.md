@@ -348,13 +348,121 @@ Lectura cruzada:
   recall ~70%, precision baja, AUC ~0.92. La firma de "anomalía global"
   es transversal al dominio.
 
+## Experimento 005: Modelo híbrido (XGBoost + IsolationForest) en Credit Card
+
+**Configuración**: `config/experiments/exp_005_creditcard_hybrid.yaml`
+
+Incorpora el `HybridModel` al ranking de los 4 modelos individuales del
+exp_003. La hipótesis original es que combinar un detector supervisado
+(XGBoost, alta precision en patrones conocidos) con uno no supervisado
+(IsolationForest, cobertura de anomalías novedosas) supera al mejor
+modelo individual al recuperar fraudes que ninguno detecta por separado.
+
+### Implementación
+
+El modelo se define en [`src/fraud_detection/models/hybrid.py`](../src/fraud_detection/models/hybrid.py)
+y soporta tres estrategias de combinación, configurables por YAML:
+
+- **`or`**: predice fraude si CUALQUIERA de los dos lo marca (union de
+  positivos). Maximiza recall, sacrifica precision.
+- **`and`**: predice fraude si AMBOS lo marcan (intersección de
+  positivos). Maximiza precision, sacrifica recall.
+- **`weighted_voting`**: aplica umbral a un promedio ponderado de las
+  probabilidades de ambos componentes. Permite control fino del
+  trade-off mediante `weights` y `threshold`.
+
+### Resultados sobre VALIDATION (Credit Card)
+
+| Modelo                            | Precision | Recall | F1         | AUC-ROC    | TP | FP    | FN |
+| --------------------------------- | --------- | ------ | ---------- | ---------- | -- | ----- | -- |
+| RulesBaseline                     | 0.1250    | 0.1343 | 0.1295     | 0.7254     | 9  | 63    | 58 |
+| RandomForest                      | 0.9600    | 0.7164 | 0.8205     | 0.9356     | 48 | 2     | 19 |
+| **XGBoost**                       | 0.9444    | 0.7612 | **0.8430** | **0.9693** | 51 | 3     | 16 |
+| IsolationForest                   | 0.0222    | 0.7463 | 0.0431     | 0.9259     | 50 | 2,203 | 17 |
+| Hybrid (OR)                       | 0.0244    | 0.8209 | 0.0473     | 0.9406     | 55 | 2,203 | 12 |
+
+### Experimento 005b: Comparativa de las 3 estrategias del híbrido
+
+**Configuración**: `config/experiments/exp_005b_creditcard_hybrid_strategies.yaml`
+
+| Estrategia                        | Precision | Recall | F1         | AUC-ROC | TP | FP    | FN |
+| --------------------------------- | --------- | ------ | ---------- | ------- | -- | ----- | -- |
+| XGBoost solo (referencia)         | 0.9444    | 0.7612 | **0.8430** | 0.9693  | 51 | 3     | 16 |
+| Hybrid OR                         | 0.0244    | 0.8209 | 0.0473     | 0.9406  | 55 | 2,203 | 12 |
+| Hybrid AND                        | 0.9388    | 0.6866 | 0.7931     | 0.9693  | 46 | 3     | 21 |
+| Hybrid weighted_voting (0.7/0.3)  | 0.9444    | 0.7612 | **0.8430** | 0.9454  | 51 | 3     | 16 |
+
+### Interpretación del híbrido
+
+**Ninguna de las tres estrategias supera al mejor modelo individual
+(XGBoost) en F1**, refutando la hipótesis inicial de mejora monotónica.
+Cada estrategia exhibe un comportamiento distinto:
+
+- **OR (`recall`-maximizer)**: recupera 4 fraudes adicionales (55 vs 51
+  de XGBoost) que solo el IsolationForest detecta, validando que el
+  componente no supervisado SÍ aporta cobertura complementaria. Sin
+  embargo, hereda íntegramente los 2,203 falsos positivos del IF,
+  derrumbando la precision de 0.94 a 0.02 y el F1 de 0.84 a 0.05.
+- **AND (`precision`-maximizer)**: mantiene la precision alta (0.94)
+  pero descarta los 5 fraudes que XGBoost detectaba en solitario (sin
+  acuerdo del IF), bajando el recall de 0.76 a 0.69. F1 cae a 0.79.
+- **weighted_voting (0.7/0.3)**: el peso de 0.3 del IF resulta
+  insuficiente para mover la decisión final, ya que la probabilidad de
+  XGBoost (cercana a 0 o 1) domina el promedio ponderado. Los
+  resultados son **idénticos** a XGBoost solo en precision, recall, F1
+  y matriz de confusión; solo el AUC-ROC cambia marginalmente.
+
+**Lectura para la tesis**: la complementariedad existe (OR detecta
+fraudes que XGBoost solo no captura), pero el costo en precision la
+hace inviable como detector único. La estrategia útil sería usar el
+híbrido OR como **filtro de primera línea** (cobertura amplia) seguido
+de una segunda etapa de revisión manual o un modelo de re-ranking. Esa
+arquitectura va más allá del alcance de esta tesis y queda como trabajo
+futuro.
+
+## Experimento 006: Modelo híbrido en PaySim
+
+**Configuración**: `config/experiments/exp_006_paysim_hybrid.yaml`
+
+### Resultados sobre VALIDATION (PaySim, sin `isFlaggedFraud`)
+
+| Modelo                            | Precision | Recall | F1         | AUC-ROC    | TP  | FP     | FN |
+| --------------------------------- | --------- | ------ | ---------- | ---------- | --- | ------ | -- |
+| RulesBaseline                     | 0.0030    | 1.0000 | 0.0059     | 0.9625     | 247 | 82,649 | 0  |
+| RandomForest                      | 0.9960    | 1.0000 | **0.9980** | **1.0000** | 247 | 1      | 0  |
+| **XGBoost**                       | 0.9960    | 1.0000 | **0.9980** | **1.0000** | 247 | 1      | 0  |
+| IsolationForest                   | 0.0113    | 0.6883 | 0.0223     | 0.9146     | 170 | 14,848 | 77 |
+| Hybrid (OR)                       | 0.0164    | 1.0000 | 0.0322     | 0.999995   | 247 | 14,849 | 0  |
+
+En PaySim el patrón se confirma con un agravante: XGBoost ya alcanza
+`recall=1.000`, por lo que el componente no supervisado no aporta
+ningún fraude adicional. El híbrido OR mantiene el recall pero hereda
+los 14,848 FP del IsolationForest. **El híbrido no aporta valor
+incremental sobre XGBoost en PaySim**.
+
+### Comparativa híbrido: Credit Card vs PaySim
+
+| Métrica val      | CC: XGB → Hyb (OR) | PaySim: XGB → Hyb (OR) |
+| ---------------- | ------------------ | ---------------------- |
+| Δ Recall         | +0.060             | 0.000 (ya saturado)    |
+| Δ Precision      | −0.920             | −0.980                 |
+| Δ F1             | −0.796             | −0.966                 |
+| Δ TP recuperados | +4                 | 0                      |
+| Δ FP incorporados| +2,200             | +14,848                |
+
+Conclusión cross-dataset: la utilidad del híbrido (medida en TP
+adicionales) depende fuertemente de que el modelo supervisado deje
+margen de recall por cubrir. En PaySim, donde el supervisado ya satura,
+el híbrido solo agrega ruido.
+
 ## Trabajo pendiente
 
-- Implementación del **modelo híbrido** combinando XGBoost + Isolation Forest.
 - Aplicación de SMOTE en train y comparación de impacto en recall.
 - Validación cruzada k-fold (k=5) para robustez estadística.
 - Evaluación final sobre el conjunto de **test** (una sola vez, al cierre).
-- Análisis cualitativo de errores: revisión del único falso positivo
-  persistente en RF/XGBoost de PaySim.
 - Re-tuning del baseline de PaySim: `min_rules_to_flag=3` o `=4` para
   obtener una comparación más equilibrada en precision.
+- Re-calibrar `contamination` de IsolationForest a la prevalencia real
+  (≈0.16% en CC, ≈0.13% en PaySim) y reevaluar el híbrido: la calidad
+  del componente no supervisado actual ahoga cualquier estrategia de
+  combinación.

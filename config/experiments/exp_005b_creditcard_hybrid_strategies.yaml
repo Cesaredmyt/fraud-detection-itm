@@ -1,0 +1,57 @@
+# Experimento 005b: Compara las 3 estrategias de combinacion del hibrido
+# sobre Credit Card. exp_005 mostro que OR mejora recall pero arruina
+# precision al heredar los 2203 FP de IsolationForest. Esta variante
+# explora si AND o weighted_voting recuperan el F1 perdido.
+
+experiment:
+  name: "exp_005b_creditcard_hybrid_strategies"
+  description: >
+    Comparativa de las 3 estrategias del HybridModel (or | and |
+    weighted_voting) sobre Credit Card. Mantiene XGBoost solo como
+    referencia del mejor modelo individual.
+  notes: "Ablation de estrategia de combinacion del hibrido."
+
+dataset:
+  name: "creditcard"
+  feature_version: "v1"
+
+split:
+  train_size: 0.70
+  val_size: 0.15
+  test_size: 0.15
+  random_seed: 42
+
+features:
+  apply_temporal: true
+  apply_amount: true
+  apply_behavioral: false
+
+resampling:
+  method: "none"
+  random_seed: 42
+
+models:
+  - name: "xgboost"
+    type: "supervised"
+    config_file: "config/models/xgboost.yaml"
+
+  - name: "hybrid"
+    type: "hybrid"
+    config_file: "config/models/hybrid.yaml"  # OR (default)
+
+  - name: "hybrid"
+    type: "hybrid"
+    config_file: "config/models/hybrid_and.yaml"
+
+  - name: "hybrid"
+    type: "hybrid"
+    config_file: "config/models/hybrid_weighted.yaml"
+
+evaluation:
+  splits:
+    - "train"
+    - "val"
+  save_models: true
+  save_json: true
+  save_figures: true
+  persist_to_db: true
