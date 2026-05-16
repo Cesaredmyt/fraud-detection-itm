@@ -118,7 +118,40 @@ def _build_model(model_config: dict[str, Any], dataset: str) -> BaseModel:
 
         return IsolationForestModel(hyperparameters=hyperparameters)
 
+    if name == "hybrid":
+        return _build_hybrid_model(model_yaml, dataset)
+
     raise ValueError(f"Modelo desconocido: {name}")
+
+
+def _build_hybrid_model(hybrid_yaml: dict[str, Any], dataset: str) -> BaseModel:
+    """Construye un HybridModel a partir de su YAML.
+
+    El YAML del hibrido apunta a los configs de sus dos componentes
+    (supervisado y no supervisado), que se cargan recursivamente con la
+    misma logica de _build_model. Asi cualquier cambio en xgboost.yaml o
+    isolation_forest.yaml se refleja automaticamente en el hibrido.
+    """
+    from fraud_detection.models.hybrid import HybridModel
+
+    components = hybrid_yaml.get("components", {})
+    sup_cfg = components["supervised"]
+    uns_cfg = components["unsupervised"]
+    hyperparameters = hybrid_yaml.get("hyperparameters", {}) or {}
+
+    supervised = _build_model(sup_cfg, dataset=dataset)
+    unsupervised = _build_model(uns_cfg, dataset=dataset)
+
+    weights_raw = hyperparameters.get("weights", [0.5, 0.5])
+    weights = (float(weights_raw[0]), float(weights_raw[1]))
+
+    return HybridModel(
+        supervised=supervised,
+        unsupervised=unsupervised,
+        combination_strategy=hyperparameters.get("combination_strategy", "or"),
+        weights=weights,
+        threshold=float(hyperparameters.get("threshold", 0.5)),
+    )
 
 
 def _evaluate_model_on_splits(
@@ -326,7 +359,10 @@ def run_experiment(config: ExperimentConfig) -> dict[str, dict[str, EvaluationRe
             print(f"     {report.summary()}")
 
         _persist_outputs(model, reports, config)
-        reports_by_model[model_name] = reports
+        # Usamos metadata.model_name (no model_cfg["name"]) para evitar
+        # colisiones cuando un experimento incluye varias variantes del
+        # mismo tipo (e.g., hybrid_or, hybrid_and, hybrid_weighted_voting).
+        reports_by_model[model.metadata.model_name] = reports
 
     # 6. Figuras comparativas
     print("\n[6/6] Generando figuras comparativas...")

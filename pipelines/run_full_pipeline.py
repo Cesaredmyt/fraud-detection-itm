@@ -53,11 +53,15 @@ def main() -> int:
     comparison_df = compare_reports(all_reports)
     print(comparison_df.to_string(index=False))
 
-    # Validación de hipótesis (si hay baseline y RF)
+    # Validación de hipótesis (si hay baseline y RF). Las keys de
+    # reports_by_model son model.metadata.model_name (e.g.
+    # "rules_baseline_creditcard"), no el nombre del config.
     print("\n" + "=" * 70)
-    if "rules_baseline" in reports_by_model and "random_forest" in reports_by_model:
-        baseline_val = reports_by_model["rules_baseline"].get("val")
-        rf_val = reports_by_model["random_forest"].get("val")
+    baseline_key = next((k for k in reports_by_model if k.startswith("rules_baseline")), None)
+    rf_key = next((k for k in reports_by_model if k == "random_forest"), None)
+    if baseline_key and rf_key:
+        baseline_val = reports_by_model[baseline_key].get("val")
+        rf_val = reports_by_model[rf_key].get("val")
         if baseline_val and rf_val:
             f1_improvement_pct = (
                 (rf_val.f1 / baseline_val.f1 - 1) * 100 if baseline_val.f1 > 0 else float("inf")
