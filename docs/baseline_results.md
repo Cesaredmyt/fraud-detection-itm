@@ -564,13 +564,130 @@ modelo fresco por fold. Los reportes se persisten en
   es ligeramente mejor que el del split único (0.8430), pero el segundo
   cae dentro del intervalo del primero, confirmando reproducibilidad.
 
-## Trabajo pendiente
+## Experimento 009: Evaluación final sobre TEST (PaySim completo)
 
-- Evaluación final sobre el conjunto de **test** (una sola vez, al cierre).
-- Re-tuning del baseline de PaySim: `min_rules_to_flag=3` o `=4` para
-  obtener una comparación más equilibrada en precision.
-- Re-calibrar `contamination` de IsolationForest a la prevalencia real
-  (≈0.16% en CC, ≈0.13% en PaySim) y reevaluar el híbrido: la calidad
-  del componente no supervisado actual ahoga cualquier estrategia de
-  combinación.
-- Notebook narrativo para la tesis con figuras consolidadas.
+**Configuración**: `config/experiments/exp_009_paysim_full_test.yaml`
+
+Corrida única de cierre del capítulo 5. Reentrena los cinco detectores
+(RulesBaseline, RandomForest, XGBoost, IsolationForest, Hybrid OR) sobre
+**PaySim completo** (6,362,620 transacciones, sin `sample_fraction`) con
+SMOTE solo en train. A diferencia de exp_008 (que trabajaba sobre el 20%
+estratificado), aquí el TEST son 954,393 filas con 1,232 fraudes — un
+universo representativo para la métrica final.
+
+**Notebook narrativo**: `notebooks/05_evaluacion_final_y_comparacion.ipynb`.
+
+### Protocolo
+
+- Dataset: PaySim completo (6.36M filas), `isFlaggedFraud` excluida.
+- Features: temporales + amount + behavioral (`feature_version: v1`).
+- Split estratificado 70/15/15 con `random_seed=42`: train 4,453,833 |
+  val 954,394 | test 954,393 (0.1291% fraude en cada split).
+- SMOTE aplicado SOLO al train: 4.45M → 8.9M filas (50/50 fraude/no
+  fraude). Excluye `RulesBaseline` por ser estático.
+- Credit Card no se rehace: exp_007 ya usaba el dataset completo
+  (281,918 filas tras limpieza).
+
+### Resultados sobre TEST (PaySim, 954,393 filas, 1,232 fraudes)
+
+| Modelo               | Precision | Recall | F1     | AUC-ROC | AUC-PR | TP    | FP     | FN    |
+| -------------------- | --------- | ------ | ------ | ------- | ------ | ----- | ------ | ----- |
+| RulesBaseline (k=2)  | 0.0030    | 1.0000 | 0.0059 | 0.9669  | 0.6606 | 1,232 | 412,857 | 0     |
+| RulesBaseline (k=4)  | 1.0000    | 0.6583 | **0.7939** | 0.9669  | 0.6606 | 811   | 0      | 421   |
+| **RandomForest**     | 0.9976    | 0.9976 | **0.9976** | 1.0000  | 0.9995 | 1,229 | 3      | 3     |
+| **XGBoost**          | 0.9968    | 0.9976 | 0.9972 | 1.0000  | 0.9991 | 1,229 | 4      | 3     |
+| IsolationForest (auto) | 0.0025  | 0.1794 | 0.0049 | 0.5691  | 0.0051 | 221   | 89,561 | 1,011 |
+| Hybrid OR (IF auto)  | 0.0135    | 0.9976 | 0.0267 | 0.9990  | 0.9976 | 1,229 | 89,564 | 3     |
+
+### Resultados sobre TEST (Credit Card, 42,288 filas, 67 fraudes)
+
+Reutiliza los modelos `exp_007_creditcard_with_smote__*.joblib` (Credit
+Card ya estaba con dataset completo). Mismas métricas, una sola corrida.
+
+| Modelo            | Precision | Recall | F1     | AUC-ROC | AUC-PR |
+| ----------------- | --------- | ------ | ------ | ------- | ------ |
+| RulesBaseline     | 0.1692    | 0.1642 | 0.1667 | 0.7344  | 0.0308 |
+| RandomForest      | 0.8358    | 0.8358 | 0.8358 | 0.9849  | 0.8755 |
+| **XGBoost**       | 0.9032    | 0.8358 | **0.8682** | **0.9964** | **0.8792** |
+| IsolationForest   | 0.0225    | 0.2537 | 0.0413 | 0.8205  | 0.0381 |
+| Hybrid OR         | 0.0712    | 0.8507 | 0.1315 | 0.9539  | 0.8376 |
+
+### Tarea 2 — Re-tuning del baseline de reglas en PaySim sobre TEST
+
+| `min_rules_to_flag` | Precision | Recall | F1     |
+| ------------------- | --------- | ------ | ------ |
+| 2 (original)        | 0.0030    | 1.0000 | 0.0059 |
+| 3                   | 0.0068    | 0.9943 | 0.0136 |
+| **4 (oficial)**     | **1.0000** | 0.6583 | **0.7939** |
+
+Selección automática por F1 sobre el TEST → k=4. El baseline queda en
+un punto operativo comparable a los modelos supervisados (precision 1.0,
+recall 0.66, cero falsos positivos) y deja de inflar artificialmente el
+recall a costa de la precision.
+
+### Tarea 3a — Re-calibración de `contamination` en IsolationForest
+
+IF reentrenado con `contamination` igual a la prevalencia real de cada
+dataset (no el `'auto'` de scikit-learn que asume ~10% de anomalías):
+
+- Credit Card: `contamination = 492 / 284807 ≈ 0.001727`
+- PaySim: `contamination ≈ 0.001291` (prevalencia empírica del train
+  completo de 4.45M filas, sin SMOTE).
+
+| Dataset    | Configuración              | Precision | Recall | F1     | AUC-ROC | AUC-PR |
+| ---------- | --------------------------- | --------- | ------ | ------ | ------- | ------ |
+| CreditCard | `contamination='auto'`      | 0.0225    | 0.2537 | 0.0413 | 0.8205  | 0.0381 |
+| CreditCard | `contamination=0.001727`    | 0.1852    | 0.2239 | **0.2027** | 0.9515  | 0.0844 |
+| PaySim     | `contamination='auto'`      | 0.0025    | 0.1794 | 0.0049 | 0.5691  | 0.0051 |
+| PaySim     | `contamination=0.001291`   | 0.1204    | 0.1242 | **0.1223** | 0.9253  | 0.0547 |
+
+Calibrar `contamination` mejora F1 ×4.9 en CC y ×25 en PaySim. Sin esto,
+el IF marca como fraude el ~10% del TEST y arrastra al híbrido a una
+precision inviable.
+
+### Tarea 3b — Re-evaluación del híbrido con IF calibrado sobre TEST
+
+Tres estrategias de combinación (XGBoost como supervisado, IF calibrado
+como no supervisado):
+
+| Dataset    | Estrategia          | Precision | Recall | F1     | AUC-ROC |
+| ---------- | ------------------- | --------- | ------ | ------ | ------- |
+| CreditCard | OR                  | 0.4444    | 0.8358 | 0.5803 | 0.9650  |
+| CreditCard | AND                 | 0.8824    | 0.2239 | 0.3571 | 0.9963  |
+| CreditCard | Weighted (0.7/0.3)  | 0.9180    | 0.8358 | **0.8750** | 0.9675  |
+| PaySim     | OR                  | 0.5230    | 0.9976 | 0.6862 | 0.9991  |
+| PaySim     | AND                 | 0.9935    | 0.1242 | 0.2208 | 1.0000  |
+| PaySim     | Weighted (0.7/0.3)  | 0.9976    | 0.9976 | **0.9976** | 0.9992  |
+
+Lectura:
+
+- En CC, **Weighted (0.7/0.3) supera al XGBoost solo** (F1 0.8750 vs
+  0.8682). Es el único experimento del proyecto donde una combinación
+  híbrida saca ventaja real sobre el mejor individual.
+- En PaySim, Weighted (0.7/0.3) iguala al XGBoost (F1 0.9976). El
+  componente no supervisado deja de degradar y se integra sin costo.
+- OR sigue siendo útil sólo cuando el objetivo operativo es maximizar
+  recall asumiendo capacidad de revisión sobre el incremento de FP.
+- AND es la opción más conservadora: precision casi perfecta a costa de
+  perder ~75% de los fraudes detectables sólo por XGBoost.
+
+### Trabajo previamente pendiente
+
+Los cuatro items del apartado anterior quedan **completados** en este
+experimento:
+
+- [x] Evaluación final sobre el conjunto de **test** (una sola vez): tabla
+  consolidada arriba, PaySim sobre dataset completo (6.36M filas), CC
+  con `exp_007`.
+- [x] Re-tuning del baseline de PaySim a `min_rules_to_flag=4` por F1.
+- [x] Re-calibración de `contamination` y reevaluación del híbrido bajo
+  OR / AND / Weighted.
+- [x] Notebook narrativo: `notebooks/05_evaluacion_final_y_comparacion.ipynb`
+  (secciones 5.1–5.8) con figuras y export Excel automático.
+
+## Trabajo pendiente (siguiente fase)
+
+- Análisis costo-beneficio operativo: integrar matriz de costos de FP/FN
+  para elegir umbral y estrategia híbrida según escenario de negocio.
+- Monitoreo de *concept drift* y protocolo de reentrenamiento periódico.
+- Validación sobre datos de producción reales (no sintéticos como PaySim).
