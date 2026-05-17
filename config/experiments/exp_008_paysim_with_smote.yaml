@@ -1,0 +1,64 @@
+# Experimento 008: Impacto de SMOTE sobre los 4 modelos + hibrido en PaySim
+# Reusa la configuracion de exp_006 cambiando resampling.method de "none"
+# a "smote". Mismo proposito que exp_007 pero en el segundo dataset.
+
+experiment:
+  name: "exp_008_paysim_with_smote"
+  description: >
+    Aplica SMOTE al conjunto de entrenamiento de PaySim 20% y reentrena
+    los 4 modelos individuales + hibrido. Permite cuantificar el impacto
+    del oversampling sintetico cuando el modelo ya satura (XGBoost en
+    PaySim alcanza F1=0.998 sin SMOTE).
+  notes: "Ablation de SMOTE en PaySim. SMOTE solo se aplica en train."
+
+dataset:
+  name: "paysim"
+  feature_version: "v1"
+  sample_fraction: 0.20
+  exclude_columns:
+    - "isFlaggedFraud"
+
+split:
+  train_size: 0.70
+  val_size: 0.15
+  test_size: 0.15
+  random_seed: 42
+
+features:
+  apply_temporal: true
+  apply_amount: true
+  apply_behavioral: true
+
+resampling:
+  method: "smote"
+  random_seed: 42
+
+models:
+  - name: "rules_baseline"
+    type: "rule_based"
+    config_file: "config/models/rules_baseline.yaml"
+
+  - name: "random_forest"
+    type: "supervised"
+    config_file: "config/models/random_forest.yaml"
+
+  - name: "xgboost"
+    type: "supervised"
+    config_file: "config/models/xgboost.yaml"
+
+  - name: "isolation_forest"
+    type: "unsupervised"
+    config_file: "config/models/isolation_forest.yaml"
+
+  - name: "hybrid"
+    type: "hybrid"
+    config_file: "config/models/hybrid.yaml"
+
+evaluation:
+  splits:
+    - "train"
+    - "val"
+  save_models: true
+  save_json: true
+  save_figures: true
+  persist_to_db: true

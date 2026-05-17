@@ -1,0 +1,71 @@
+# Experimento 009: Evaluacion final sobre el conjunto de TEST con PaySim completo
+# Reentrenamiento de los 5 detectores (RulesBaseline, RandomForest, XGBoost,
+# IsolationForest, Hibrido) sobre el dataset PaySim COMPLETO (6.36M filas, sin
+# sample_fraction). Es la corrida definitiva para el capitulo 5 de la tesis:
+# - Split estratificado 70/15/15 con seed=42 (mismo protocolo que exp_007/008).
+# - SMOTE aplicado EXCLUSIVAMENTE al train (regla inviolable del proyecto).
+# - Evaluacion en train, val Y test (incluye el split test para el cierre).
+# - No persiste a PostgreSQL para evitar dependencia de infraestructura.
+
+experiment:
+  name: "exp_009_paysim_full_test"
+  description: >
+    Reentrenamiento de los cinco detectores sobre PaySim completo (sin
+    sample_fraction) para la evaluacion final del capitulo 5 de la tesis.
+    Replica exp_008 pero usando los 6.36M de transacciones disponibles
+    para que la metrica reportada sobre TEST sea representativa del
+    universo total del dataset, no de una muestra del 20%.
+  notes: "Corrida final unica sobre TEST con todos los datos."
+
+dataset:
+  name: "paysim"
+  feature_version: "v1"
+  # sample_fraction omitido a proposito: usa los 6.36M de filas completas.
+  exclude_columns:
+    - "isFlaggedFraud"
+
+split:
+  train_size: 0.70
+  val_size: 0.15
+  test_size: 0.15
+  random_seed: 42
+
+features:
+  apply_temporal: true
+  apply_amount: true
+  apply_behavioral: true
+
+resampling:
+  method: "smote"
+  random_seed: 42
+
+models:
+  - name: "rules_baseline"
+    type: "rule_based"
+    config_file: "config/models/rules_baseline.yaml"
+
+  - name: "random_forest"
+    type: "supervised"
+    config_file: "config/models/random_forest.yaml"
+
+  - name: "xgboost"
+    type: "supervised"
+    config_file: "config/models/xgboost.yaml"
+
+  - name: "isolation_forest"
+    type: "unsupervised"
+    config_file: "config/models/isolation_forest.yaml"
+
+  - name: "hybrid"
+    type: "hybrid"
+    config_file: "config/models/hybrid.yaml"
+
+evaluation:
+  splits:
+    - "train"
+    - "val"
+    - "test"
+  save_models: true
+  save_json: true
+  save_figures: true
+  persist_to_db: false
