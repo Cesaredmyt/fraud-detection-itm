@@ -1,0 +1,46 @@
+# Experimento 001: Comparativa Random Forest vs Rules Baseline sobre Credit Card
+# Esta es la configuración del experimento que valida la hipótesis del proyecto.
+
+experiment:
+  name: "exp_001_creditcard_baseline_vs_rf"
+  description: >
+    Compara RulesBaseline vs RandomForest en Credit Card Fraud Detection.
+    Configuración por defecto, sin SMOTE, sin tuning. Línea base del PMV.
+  notes: "Primer experimento formal del proyecto."
+
+dataset:
+  name: "creditcard"
+  feature_version: "v1"
+
+split:
+  train_size: 0.70
+  val_size: 0.15
+  test_size: 0.15
+  random_seed: 42
+
+features:
+  apply_temporal: true
+  apply_amount: true
+  apply_behavioral: false # no aplicable a Credit Card
+
+resampling:
+  method: "none" # 'none', 'smote', 'random_oversample'
+  random_seed: 42
+
+models:
+  - name: "rules_baseline"
+    type: "rule_based"
+    config_file: "config/models/rules_baseline.yaml"
+
+  - name: "random_forest"
+    type: "supervised"
+    config_file: "config/models/random_forest.yaml"
+
+evaluation:
+  splits:
+    - "train"
+    - "val"
+  save_models: true
+  save_json: true
+  save_figures: true
+  persist_to_db: true

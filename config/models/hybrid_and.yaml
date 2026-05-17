@@ -1,0 +1,20 @@
+model:
+  name: "hybrid"
+  type: "hybrid"
+  library: "custom"
+  class: "fraud_detection.models.hybrid.HybridModel"
+
+components:
+  supervised:
+    name: "xgboost"
+    config_file: "config/models/xgboost.yaml"
+  unsupervised:
+    name: "isolation_forest"
+    config_file: "config/models/isolation_forest.yaml"
+
+hyperparameters:
+  combination_strategy: "and"  # fraude solo si ambos lo marcan (maximiza precision)
+  weights:
+    - 0.5
+    - 0.5
+  threshold: 0.5

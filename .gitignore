@@ -73,6 +73,9 @@ reports/experiment_logs/*
 *.swo
 *~
 
+# === Claude Code (worktrees y settings locales) ===
+.claude/
+
 # === Sistema operativo ===
 .DS_Store
 Thumbs.db

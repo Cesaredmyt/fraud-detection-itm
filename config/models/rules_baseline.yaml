@@ -1,0 +1,18 @@
+model:
+  name: "rules_baseline"
+  type: "rule_based"
+  library: "custom"
+  class: "fraud_detection.models.rules_baseline.RulesBaseline"
+
+rules:
+  high_amount_threshold: 200.0
+  high_amount_zscore: 3.0
+  night_hours_start: 0
+  night_hours_end: 5
+  max_frequency_1h: 5
+  zero_balance_origin: true
+
+description: >
+  Sistema heurístico basado en reglas manuales, utilizado como línea base
+  experimental para validar la hipótesis del proyecto. Cada regla equivale a
+  una condición ifthen que clasifica una transacción como sospechosa.

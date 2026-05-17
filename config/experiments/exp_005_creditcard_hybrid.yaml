@@ -1,0 +1,60 @@
+# Experimento 005: Modelo hibrido (XGBoost + IsolationForest) sobre Credit Card
+# Incorpora el hibrido al ranking de modelos individuales del exp_003 para
+# evaluar si la combinacion supera al mejor modelo individual (XGBoost).
+
+experiment:
+  name: "exp_005_creditcard_hybrid"
+  description: >
+    Anade el modelo hibrido al conjunto de 4 modelos individuales sobre
+    Credit Card. Misma configuracion de datos y splits que exp_003 para
+    permitir comparacion directa.
+  notes: "Validacion empirica de la hipotesis: hibrido > mejor individual."
+
+dataset:
+  name: "creditcard"
+  feature_version: "v1"
+
+split:
+  train_size: 0.70
+  val_size: 0.15
+  test_size: 0.15
+  random_seed: 42
+
+features:
+  apply_temporal: true
+  apply_amount: true
+  apply_behavioral: false
+
+resampling:
+  method: "none"
+  random_seed: 42
+
+models:
+  - name: "rules_baseline"
+    type: "rule_based"
+    config_file: "config/models/rules_baseline.yaml"
+
+  - name: "random_forest"
+    type: "supervised"
+    config_file: "config/models/random_forest.yaml"
+
+  - name: "xgboost"
+    type: "supervised"
+    config_file: "config/models/xgboost.yaml"
+
+  - name: "isolation_forest"
+    type: "unsupervised"
+    config_file: "config/models/isolation_forest.yaml"
+
+  - name: "hybrid"
+    type: "hybrid"
+    config_file: "config/models/hybrid.yaml"
+
+evaluation:
+  splits:
+    - "train"
+    - "val"
+  save_models: true
+  save_json: true
+  save_figures: true
+  persist_to_db: true

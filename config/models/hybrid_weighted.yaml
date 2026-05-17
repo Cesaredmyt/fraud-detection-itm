@@ -1,0 +1,22 @@
+model:
+  name: "hybrid"
+  type: "hybrid"
+  library: "custom"
+  class: "fraud_detection.models.hybrid.HybridModel"
+
+components:
+  supervised:
+    name: "xgboost"
+    config_file: "config/models/xgboost.yaml"
+  unsupervised:
+    name: "isolation_forest"
+    config_file: "config/models/isolation_forest.yaml"
+
+hyperparameters:
+  # Promedio ponderado de probabilidades; favorece al supervisado (mas
+  # confiable) pero usa el no supervisado como senal complementaria.
+  combination_strategy: "weighted_voting"
+  weights:
+    - 0.7  # peso supervisado
+    - 0.3  # peso no supervisado
+  threshold: 0.5
