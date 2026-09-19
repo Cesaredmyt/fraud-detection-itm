@@ -3,6 +3,7 @@
 # estratificado del 20% para acelerar la iteración.
 
 experiment:
+  metric_status: "academic_legacy"
   name: "exp_004_paysim_four_models"
   description: >
     Replica la comparativa de 4 modelos (Reglas, RandomForest, XGBoost,

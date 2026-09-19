@@ -3,6 +3,7 @@
 # a "smote". Mismo proposito que exp_007 pero en el segundo dataset.
 
 experiment:
+  metric_status: "academic_legacy"
   name: "exp_008_paysim_with_smote"
   description: >
     Aplica SMOTE al conjunto de entrenamiento de PaySim 20% y reentrena

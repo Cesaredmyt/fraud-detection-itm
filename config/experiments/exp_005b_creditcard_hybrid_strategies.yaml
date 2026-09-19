@@ -4,6 +4,7 @@
 # explora si AND o weighted_voting recuperan el F1 perdido.
 
 experiment:
+  metric_status: "academic_legacy"
   name: "exp_005b_creditcard_hybrid_strategies"
   description: >
     Comparativa de las 3 estrategias del HybridModel (or | and |

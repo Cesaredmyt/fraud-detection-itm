@@ -4,6 +4,7 @@
 # problema. Esta variante mide el rendimiento "puro" con features derivadas.
 
 experiment:
+  metric_status: "academic_legacy"
   name: "exp_004b_paysim_four_models_no_flagged"
   description: >
     Variante de exp_004 que excluye la columna `isFlaggedFraud` de X.

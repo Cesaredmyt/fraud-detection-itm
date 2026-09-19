@@ -1,5 +1,10 @@
 # Benchmarks experimentales
 
+> **Clasificación de métricas: `academic_legacy`.** Estos resultados pertenecen
+> al protocolo académico anterior. No deben usarse para seleccionar o ajustar
+> el candidato del MVP. Consulte
+> [`docs/audit/metric_registry.md`](audit/metric_registry.md).
+
 Resultados oficiales del proyecto en el dataset Credit Card Fraud Detection.
 Estos números se citan en el documento de tesis y son reproducibles mediante
 los scripts de `pipelines/` con los YAMLs de configuración en

@@ -3,6 +3,7 @@
 # evaluar si la combinacion supera al mejor modelo individual (XGBoost).
 
 experiment:
+  metric_status: "academic_legacy"
   name: "exp_005_creditcard_hybrid"
   description: >
     Anade el modelo hibrido al conjunto de 4 modelos individuales sobre

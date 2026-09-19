@@ -3,6 +3,7 @@
 # supervisado + no supervisado.
 
 experiment:
+  metric_status: "academic_legacy"
   name: "exp_003_creditcard_four_models"
   description: >
     Compara RulesBaseline, RandomForest, XGBoost e IsolationForest en

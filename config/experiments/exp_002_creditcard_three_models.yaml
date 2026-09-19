@@ -2,6 +2,7 @@
 # Añade XGBoost a la comparativa Reglas vs Random Forest.
 
 experiment:
+  metric_status: "academic_legacy"
   name: "exp_002_creditcard_three_models"
   description: >
     Compara RulesBaseline, RandomForest y XGBoost en Credit Card.

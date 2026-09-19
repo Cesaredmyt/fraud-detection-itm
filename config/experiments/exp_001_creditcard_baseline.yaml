@@ -2,6 +2,7 @@
 # Esta es la configuración del experimento que valida la hipótesis del proyecto.
 
 experiment:
+  metric_status: "academic_legacy"
   name: "exp_001_creditcard_baseline_vs_rf"
   description: >
     Compara RulesBaseline vs RandomForest en Credit Card Fraud Detection.

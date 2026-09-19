@@ -4,6 +4,7 @@
 # en recall (y precision) sin tocar ningun otro hiperparametro.
 
 experiment:
+  metric_status: "academic_legacy"
   name: "exp_007_creditcard_with_smote"
   description: >
     Aplica SMOTE al conjunto de entrenamiento de Credit Card y reentrena

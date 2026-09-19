@@ -3,6 +3,7 @@
 # combinacion supera a XGBoost solo (que ya satura en F1=0.998 sobre val).
 
 experiment:
+  metric_status: "academic_legacy"
   name: "exp_006_paysim_hybrid"
   description: >
     Anade el modelo hibrido al ranking de modelos individuales de PaySim

@@ -8,6 +8,7 @@
 # - No persiste a PostgreSQL para evitar dependencia de infraestructura.
 
 experiment:
+  metric_status: "academic_legacy"
   name: "exp_009_paysim_full_test"
   description: >
     Reentrenamiento de los cinco detectores sobre PaySim completo (sin
