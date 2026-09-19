@@ -42,9 +42,9 @@ def test_split_preserves_class_ratio(imbalanced_df: pd.DataFrame) -> None:
     original_rate = imbalanced_df["Class"].mean()
     rates = split.fraud_rates()
     for split_name, rate in rates.items():
-        assert rate == pytest.approx(
-            original_rate, abs=0.003
-        ), f"Split {split_name} fraud rate {rate} difiere de {original_rate}"
+        assert rate == pytest.approx(original_rate, abs=0.003), (
+            f"Split {split_name} fraud rate {rate} difiere de {original_rate}"
+        )
 
 
 @pytest.mark.unit

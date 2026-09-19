@@ -12,7 +12,7 @@ días solo después de las comprobaciones definidas en
 
 ## Backlog
 
-`FD-001`, `FD-002`, `FD-003`, `FD-004`, `FD-005`, `FD-006`, `FD-007`,
+`FD-002`, `FD-003`, `FD-004`, `FD-005`, `FD-006`, `FD-007`,
 `FD-008`, `FD-009`, `FD-010`, `FD-011`, `FD-012`, `FD-013`, `FD-014`,
 `FD-015`, `FD-016`, `FD-017`, `FD-018`, `FD-019`, `FD-020`, `FD-021`,
 `FD-022`, `FD-023`, `FD-024`, `FD-025`, `FD-026`, `FD-027`, `FD-028`,
@@ -28,5 +28,5 @@ Sin tickets.
 
 ## Done
 
-Sin tickets. La congelación del Día 1 es trabajo preparatorio y no se reasigna
-a uno de los IDs que el roadmap reserva para el backlog P0/P1/P2.
+`FD-001`. La congelación del Día 1 es trabajo preparatorio y no se reasigna a
+uno de los IDs que el roadmap reserva para el backlog P0/P1/P2.

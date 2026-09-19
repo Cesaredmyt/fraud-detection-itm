@@ -7,7 +7,7 @@ una decisión pendiente, no una asignación inferida.
 
 | ID | Prioridad | Título | Responsable | Día/gate de aceptación | Estado |
 | --- | --- | --- | --- | --- | --- |
-| FD-001 | P0 | Reparar instalación y lock | BE | Día 2 | Backlog |
+| FD-001 | P0 | Reparar instalación y lock | BE | Día 2 | Done |
 | FD-002 | P0 | Hacer CI bloqueante | BE | Día 3 | Backlog |
 | FD-003 | P0 | Corregir historial multiusuario | ML | Día 8 | Backlog |
 | FD-004 | P0 | Convertir deciles a transformer | ML | Día 9 | Backlog |
@@ -42,4 +42,3 @@ una decisión pendiente, no una asignación inferida.
 
 Cada ticket hereda los criterios concretos y la aceptación del día o gate
 referenciado, además de la Definition of Done global del roadmap.
-

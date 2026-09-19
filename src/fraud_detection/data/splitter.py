@@ -78,9 +78,9 @@ class DataSplit:
         rates = self.fraud_rates()
         return (
             f"DataSplit total={self.total:,} | "
-            f"train={self.n_train:,} ({rates['train']*100:.4f}% fraude) | "
-            f"val={self.n_val:,} ({rates['val']*100:.4f}% fraude) | "
-            f"test={self.n_test:,} ({rates['test']*100:.4f}% fraude)"
+            f"train={self.n_train:,} ({rates['train'] * 100:.4f}% fraude) | "
+            f"val={self.n_val:,} ({rates['val'] * 100:.4f}% fraude) | "
+            f"test={self.n_test:,} ({rates['test'] * 100:.4f}% fraude)"
         )
 
 
