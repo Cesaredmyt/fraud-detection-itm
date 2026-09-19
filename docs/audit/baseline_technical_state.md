@@ -27,7 +27,7 @@ no existe.
 | Campo | Valor |
 | --- | --- |
 | Repositorio | `https://github.com/Cesaredmyt/fraud-detection-itm.git` |
-| Commit | `6b7f947cb8117e01c02830bdb6030e2e81da0bda` |
+| Commit | `ba053d26397141bb21c8557ef8cbb195cf0cba07` |
 | Rama general del roadmap | `feature/antifraud-mvp` |
 | Tag que apunta al commit | `v1.0.0` |
 | Python | CPython 3.11.0, 64 bits |
@@ -81,7 +81,7 @@ repositorio fijada al commit anterior
 -e git+https://github.com/Cesaredmyt/fraud-detection-itm.git@7bff04eeca184fed115da7b5b8e5a98fcd719210#egg=fraud_detection_itm
 ```
 
-Ese origen no representa el checkout auditado (`6b7f947…`) y puede instalar
+Ese origen no representa el checkout auditado (`ba053d2…`) y puede instalar
 código desde otra revisión/ruta de origen. En este equipo no quedó un
 `.egg-link`, `.pth` ni distribución `fraud*` en los directorios de
 `site-packages`; el fallo observable es una instalación editable ausente,

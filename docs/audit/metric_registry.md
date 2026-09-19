@@ -3,7 +3,7 @@
 **Clasificación:** `academic_legacy`
 
 Todas las métricas existentes al commit
-`6b7f947cb8117e01c02830bdb6030e2e81da0bda` son resultados académicos
+`ba053d26397141bb21c8557ef8cbb195cf0cba07` son resultados académicos
 heredados. No son métricas de candidato, champion ni piloto y no deben usarse
 para tuning futuro.
 
@@ -24,4 +24,3 @@ para tuning futuro.
 - No constituyen evidencia comercial ni validación sobre datos de cliente.
 - Los resultados del protocolo v2 deberán usar una clasificación distinta,
   un manifest de datos y una identidad de corrida nueva.
-
